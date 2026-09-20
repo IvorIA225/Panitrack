@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <radialGradient id="bgGrad192" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </radialGradient>
+    <linearGradient id="goldGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="30%" stop-color="#f59e0b"/>
+      <stop offset="80%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect width="192" height="192" rx="42" fill="url(#bgGrad192)"/>
+  <rect width="186" height="186" x="3" y="3" rx="39" fill="none" stroke="rgba(245, 158, 11, 0.4)" stroke-width="2"/>
+
+  <!-- Bread Loaves Icon -->
+  <g transform="translate(20, 20)">
+    <!-- Baguette (Main diagonal golden loaf) -->
+    <ellipse cx="76" cy="76" rx="68" ry="24" transform="rotate(-30 76 76)" fill="url(#goldGrad192)"/>
+    
+    <!-- Baguette Scars -->
+    <path d="M36 96 Q46 88 52 78" stroke="#451a03" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M58 82 Q68 74 74 64" stroke="#451a03" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M80 68 Q90 60 96 50" stroke="#451a03" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M102 54 Q112 46 118 36" stroke="#451a03" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- Title PT -->
+  <text x="96" y="162" text-anchor="middle" font-family="'Outfit', system-ui, sans-serif" font-size="22" font-weight="800" fill="#ffffff" letter-spacing="1">
+    Pani<tspan fill="#f59e0b">Track</tspan>
+  </text>
+</svg>
