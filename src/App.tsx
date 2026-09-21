@@ -21,6 +21,7 @@ import { ShiftAgent } from './wat/agent';
 
 import { HeaderBar } from './components/HeaderBar';
 import { ThreeDimensionalBreadHero } from './components/ThreeDimensionalBreadHero';
+import { SimplePatesFarinePage } from './components/SimplePatesFarinePage';
 import { CleanDispatchPage } from './components/CleanDispatchPage';
 import { PhaseBaking } from './components/PhaseBaking';
 import { PhaseCartoning } from './components/PhaseCartoning';
@@ -28,11 +29,11 @@ import { PhaseOnboarding } from './components/PhaseOnboarding';
 import { HandoverReportModal } from './components/HandoverReportModal';
 import { AgentDrawer } from './components/AgentDrawer';
 import { AuditLogViewer } from './components/AuditLogViewer';
-import { Truck, Flame, Box, UserCheck, FileCheck, Layers } from 'lucide-react';
+import { Truck, Flame, Box, UserCheck, FileCheck, Layers, ShoppingBag, Settings } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [state, setState] = useState<ShiftState>(() => loadShiftState());
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'baking' | 'cartoning' | 'onboarding' | 'handover'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'pates' | 'dispatch' | 'advanced_baking' | 'advanced_cartoning' | 'onboarding'>('pates');
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isAgentOpen, setIsAgentOpen] = useState(false);
 
@@ -323,116 +324,133 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
       <ThreeDimensionalBreadHero
         state={state}
         onScrollToDispatch={() => scrollToSection('dispatch')}
-        onScrollToBaking={() => scrollToSection('baking')}
+        onScrollToBaking={() => scrollToSection('pates')}
       />
 
-      {/* Barre de navigation ultra-fluide / Onglets épurés */}
-      <div className="scroll-rail-nav" style={{ padding: '8px 12px' }}>
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+      {/* Barre de navigation ultra-fluide / Les 2 Seules Missions du Patron */}
+      <div className="scroll-rail-nav" style={{ padding: '10px 14px' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', alignItems: 'center' }}>
           
+          {/* Mission 1 : Pâtes par Sac de Farine */}
           <button
-            onClick={() => setActiveTab('dispatch')}
+            onClick={() => setActiveTab('pates')}
             className="btn"
             style={{
-              background: activeTab === 'dispatch' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'transparent',
-              color: activeTab === 'dispatch' ? '#000' : 'var(--flour-white)',
-              padding: '10px 18px',
+              background: activeTab === 'pates' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'rgba(255,255,255,0.05)',
+              color: activeTab === 'pates' ? '#000' : 'var(--flour-white)',
+              padding: '11px 20px',
               borderRadius: '12px',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              whiteSpace: 'nowrap'
+              fontSize: '14px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              border: activeTab === 'pates' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: activeTab === 'pates' ? '0 4px 15px rgba(245,158,11,0.4)' : 'none'
             }}
           >
-            <Truck size={17} />
-            <span>🚚 Émargement Livreurs (Sacs & Vrac)</span>
-            {(state.deliveries?.length || 0) > 0 && (
+            <ShoppingBag size={18} />
+            <span>🥖 1. Pâtes par Sac de Farine</span>
+            {(state.flourBags?.length || 0) > 0 && (
               <span style={{
-                background: activeTab === 'dispatch' ? 'rgba(0,0,0,0.25)' : 'rgba(245,158,11,0.2)',
-                color: activeTab === 'dispatch' ? '#000' : 'var(--amber-light)',
+                background: activeTab === 'pates' ? 'rgba(0,0,0,0.25)' : 'rgba(245,158,11,0.25)',
+                color: activeTab === 'pates' ? '#000' : 'var(--amber-light)',
                 borderRadius: '999px',
-                padding: '2px 8px',
-                fontSize: '11px'
+                padding: '2px 9px',
+                fontSize: '11.5px',
+                fontWeight: 800
               }}>
-                {state.deliveries?.length}
+                {state.flourBags?.length} sac{state.flourBags.length > 1 ? 's' : ''}
               </span>
             )}
           </button>
 
+          {/* Mission 2 : Énumérer les Livreurs */}
           <button
-            onClick={() => setActiveTab('baking')}
+            onClick={() => setActiveTab('dispatch')}
             className="btn"
             style={{
-              background: activeTab === 'baking' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'transparent',
-              color: activeTab === 'baking' ? '#000' : 'var(--flour-white)',
-              padding: '10px 16px',
+              background: activeTab === 'dispatch' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'rgba(255,255,255,0.05)',
+              color: activeTab === 'dispatch' ? '#000' : 'var(--flour-white)',
+              padding: '11px 20px',
               borderRadius: '12px',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              whiteSpace: 'nowrap'
+              fontSize: '14px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              border: activeTab === 'dispatch' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: activeTab === 'dispatch' ? '0 4px 15px rgba(245,158,11,0.4)' : 'none'
             }}
           >
-            <Flame size={17} />
-            <span>🥖 Fournil & Chariots (180+20)</span>
+            <Truck size={18} />
+            <span>🚚 2. Énumérer les Livreurs</span>
+            {(state.deliveries?.length || 0) > 0 && (
+              <span style={{
+                background: activeTab === 'dispatch' ? 'rgba(0,0,0,0.25)' : 'rgba(245,158,11,0.25)',
+                color: activeTab === 'dispatch' ? '#000' : 'var(--amber-light)',
+                borderRadius: '999px',
+                padding: '2px 9px',
+                fontSize: '11.5px',
+                fontWeight: 800
+              }}>
+                {state.deliveries?.length} livreur{state.deliveries.length > 1 ? 's' : ''}
+              </span>
+            )}
           </button>
 
-          <button
-            onClick={() => setActiveTab('cartoning')}
-            className="btn"
-            style={{
-              background: activeTab === 'cartoning' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'transparent',
-              color: activeTab === 'cartoning' ? '#000' : 'var(--flour-white)',
-              padding: '10px 16px',
-              borderRadius: '12px',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Box size={17} />
-            <span>📦 Cartonnage (Minuit)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('onboarding')}
-            className="btn"
-            style={{
-              background: activeTab === 'onboarding' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'transparent',
-              color: activeTab === 'onboarding' ? '#000' : 'var(--flour-white)',
-              padding: '10px 16px',
-              borderRadius: '12px',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <UserCheck size={17} />
-            <span>🤝 Posture & Arrivée</span>
-          </button>
-
+          {/* Fiche Simple Patron */}
           <button
             onClick={() => setIsReportOpen(true)}
             className="btn"
             style={{
-              background: 'rgba(16, 185, 129, 0.15)',
+              background: 'rgba(16, 185, 129, 0.18)',
               color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              padding: '10px 16px',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              padding: '11px 18px',
               borderRadius: '12px',
               fontSize: '13.5px',
-              fontWeight: 700,
+              fontWeight: 800,
               marginLeft: 'auto',
               whiteSpace: 'nowrap'
             }}
+            title="Afficher la fiche claire à remettre au patron"
           >
-            <FileCheck size={17} />
-            <span>Bordereau Patron (Clôture)</span>
+            <FileCheck size={18} />
+            <span>📋 Fiche Finale Patron</span>
+          </button>
+
+          {/* Bouton pour afficher la vue avancée optionnelle (Chariots / Cartons) */}
+          <button
+            onClick={() => setActiveTab(activeTab === 'advanced_baking' ? 'pates' : 'advanced_baking')}
+            className="btn"
+            style={{
+              background: (activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+              color: (activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? '#c4b5fd' : 'var(--text-muted)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '9px 12px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              whiteSpace: 'nowrap'
+            }}
+            title="Options avancées facultatives (Chariots métalliques & Cartons minuit)"
+          >
+            <Settings size={14} />
+            <span>{(activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? 'Masquer Avancé' : 'Chariots & Cartons (Optionnel)'}</span>
           </button>
 
         </div>
       </div>
 
-      {/* Vue active épurée */}
+      {/* Vue active ultra-centrée sur les 2 missions */}
       <main className="perspective-stage">
+        {activeTab === 'pates' && (
+          <div ref={bakingSectionRef}>
+            <SimplePatesFarinePage
+              state={state}
+              onAddFlourBag={handleAddFlourBag}
+              onDeleteFlourBag={handleDeleteFlourBag}
+              onNavigateToDrivers={() => setActiveTab('dispatch')}
+            />
+          </div>
+        )}
+
         {activeTab === 'dispatch' && (
           <div ref={dispatchSectionRef}>
             <CleanDispatchPage
@@ -444,8 +462,24 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
           </div>
         )}
 
-        {activeTab === 'baking' && (
-          <div ref={bakingSectionRef}>
+        {activeTab === 'advanced_baking' && (
+          <div>
+            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setActiveTab('pates')}
+                style={{ fontSize: '12px' }}
+              >
+                ← Retour au comptage simple des pâtes
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setActiveTab('advanced_cartoning')}
+                style={{ fontSize: '12px' }}
+              >
+                Aller au Cartonnage Minuit →
+              </button>
+            </div>
             <PhaseBaking
               state={state}
               onUpdateTargetFlourBags={handleUpdateTargetFlourBags}
@@ -453,26 +487,36 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
               onDeleteFlourBag={handleDeleteFlourBag}
               onAddCart={handleAddCart}
               onDeleteCart={handleDeleteCart}
-              onAdvanceToPhase2={() => setActiveTab('cartoning')}
+              onAdvanceToPhase2={() => setActiveTab('advanced_cartoning')}
             />
           </div>
         )}
 
-        {activeTab === 'cartoning' && (
-          <PhaseCartoning
-            state={state}
-            onAddCartonDump={handleAddCartonDump}
-            onDeleteCartonDump={handleDeleteCartonDump}
-            onAdvanceToPhase3={() => setActiveTab('dispatch')}
-          />
-        )}
-
-        {activeTab === 'onboarding' && (
-          <PhaseOnboarding
-            state={state}
-            onUpdateChecklist={handleUpdateChecklist}
-            onAdvanceToPhase1={() => setActiveTab('baking')}
-          />
+        {activeTab === 'advanced_cartoning' && (
+          <div>
+            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setActiveTab('advanced_baking')}
+                style={{ fontSize: '12px' }}
+              >
+                ← Retour Fournil & Chariots
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => setActiveTab('dispatch')}
+                style={{ fontSize: '12px' }}
+              >
+                Aller à l'Énumération des Livreurs →
+              </button>
+            </div>
+            <PhaseCartoning
+              state={state}
+              onAddCartonDump={handleAddCartonDump}
+              onDeleteCartonDump={handleDeleteCartonDump}
+              onAdvanceToPhase3={() => setActiveTab('dispatch')}
+            />
+          </div>
         )}
       </main>
 

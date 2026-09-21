@@ -124,13 +124,13 @@ export const ThreeDimensionalBreadHero: React.FC<ThreeDimensionalBreadHeroProps>
               letterSpacing: '-0.03em'
             }}
           >
-            Contrôle & Émargement <br />
+            Vos 2 Seules Missions : <br />
             <span style={{
               background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              Ultra-Fluide du Fournil
+              Pâtes par Sac & Livreurs
             </span>
           </h1>
 
@@ -144,32 +144,32 @@ export const ThreeDimensionalBreadHero: React.FC<ThreeDimensionalBreadHeroProps>
               transform: 'translateZ(25px)'
             }}
           >
-            Saisie rapide des sacs et des pains en vrac, contrôle automatique de Diallo et de l’équipe Souridji,
-            avec balance matière certifiée pour la remise au patron.
+            Plus de calculs compliqués : <strong>1.</strong> Vous comptez le nombre de pâtes qui sortent pour chaque sac de farine. 
+            <strong> 2.</strong> Vous énumérez chaque livreur qui vient chercher du pain.
           </p>
 
           {/* Boutons d'accès directs épurés */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', transform: 'translateZ(35px)' }}>
             <button
               className="btn btn-primary"
-              onClick={onScrollToDispatch}
+              onClick={onScrollToBaking}
               style={{
                 fontSize: '14px',
                 padding: '12px 22px',
                 boxShadow: '0 8px 25px rgba(245, 158, 11, 0.4)'
               }}
             >
-              <Truck size={17} />
-              <span>Émarger les Livreurs (Sacs & Vrac)</span>
+              <ShoppingBag size={17} />
+              <span>🥖 1. Pâtes par Sac de Farine</span>
             </button>
 
             <button
               className="btn btn-secondary"
-              onClick={onScrollToBaking}
-              style={{ fontSize: '14px', padding: '12px 18px' }}
+              onClick={onScrollToDispatch}
+              style={{ fontSize: '14px', padding: '12px 20px' }}
             >
-              <Flame size={17} color="var(--amber-light)" />
-              <span>Fournil & Chariots (180+20)</span>
+              <Truck size={17} color="var(--amber-light)" />
+              <span>🚚 2. Énumérer les Livreurs</span>
             </button>
           </div>
         </div>
