@@ -455,3 +455,165 @@ h1, h2, h3, h4 {
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE ERGONOMICS (Smartphone-First & Desktop Polish)
+   ========================================================================== */
+
+/* Barre de navigation mobile inférieure (style app native iOS / Android) */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: rgba(11, 15, 25, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 12px)) 12px;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.75);
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 12px;
+  transition: all 0.18s ease;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-btn.active {
+  color: var(--amber-light);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.mobile-nav-btn:active {
+  transform: scale(0.92);
+}
+
+.mobile-nav-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-nav-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mobile-nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  line-height: 1.1;
+}
+
+.mobile-nav-badge.amber {
+  background: var(--amber-primary);
+  color: #000;
+}
+
+.mobile-nav-badge.warning {
+  background: #f59e0b;
+  color: #000;
+}
+
+.mobile-nav-badge.danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* Media Queries Smartphone & Tablette (< 768px) */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 10px 10px calc(80px + env(safe-area-inset-bottom, 20px)) 10px;
+    gap: 12px;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  .header-desktop-actions {
+    display: none !important;
+  }
+
+  .header-mobile-toggle {
+    display: block !important;
+  }
+
+  .header-desktop-only {
+    display: none !important;
+  }
+
+  .header-time-pill {
+    padding: 4px 8px !important;
+  }
+
+  .mobile-cards-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .desktop-table-view {
+    display: none !important;
+  }
+
+  /* Évite l'effet de zoom intrusif automatique d'iOS Safari */
+  .form-input, input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Sur mobile, la barre de navigation inférieure remplace la rail nav du haut */
+  .scroll-rail-nav {
+    display: none !important;
+  }
+
+  .hero-section {
+    padding: 18px 16px !important;
+  }
+}
+
+/* Media Queries Desktop (>= 769px) */
+@media (min-width: 769px) {
+  .header-mobile-toggle {
+    display: none !important;
+  }
+
+  .header-mobile-dropdown {
+    display: none !important;
+  }
+
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .mobile-cards-list {
+    display: none !important;
+  }
+
+  .desktop-table-view {
+    display: block !important;
+  }
+}
+

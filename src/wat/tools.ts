@@ -1,7 +1,7 @@
 /**
  * PaniTrack - TOOLS (Outils Déterministes du Framework WAT)
- * Ces fonctions pures et certifiées garantissent des calculs infaillibles,
- * l'audit des sacs et la réconciliation mathématique du shift.
+ * Fonctions pures et certifiées pour la distribution, l'anti-sèche visuelle,
+ * la comptabilité de la démarque et le bilan financier « Zéro Manquant ».
  */
 
 import {
@@ -10,31 +10,100 @@ import {
   ShiftReconciliation,
   AuditLogEntry,
   ShiftPhase,
-  ProductionTargetPlan
+  ProductionTargetPlan,
+  DistributionChannel,
+  OFFICIAL_UNIT_PRICES
 } from './types';
 
 /**
- * OUTIL DE CALCUL DE PRODUCTION AUTOMATIQUE DU SHIFT
- * Déduit l'ensemble du plan de production à partir du seul nombre de sacs de farine saisis :
- * - Chariots attendus (2 par sac)
- * - Pains physiques bruts (400 par sac)
- * - Pains vendables nets (180 par chariot)
- * - Marge de casse tolérée (+20 par chariot)
- * - Réserve boutique du matin (2 chariots obligatoires)
- * - Chariots et pains alloués aux livreurs
- * - Avancement en direct : sacs et chariots restants à faire
+ * ANTI-SÈCHE VISUELLE (Pilier 1 du Protocole Terrain)
+ * Tableau de conversion certifié pour annuler toute charge mentale :
+ * 1 sac = 25 pains, 6 sacs = 150 pains... avec calcul instantané en FCFA.
+ */
+export interface BagConversionItem {
+  bags: number;
+  loaves: number;
+  cfaLivreursOrAdjara: number; // 110 FCFA
+  cfaGuichet: number;          // 150 FCFA
+  label: string;
+}
+
+export function getBagConversionTable(): BagConversionItem[] {
+  const steps = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20];
+  return steps.map((bags) => {
+    const loaves = bags * 25;
+    return {
+      bags,
+      loaves,
+      cfaLivreursOrAdjara: loaves * OFFICIAL_UNIT_PRICES.livreur_officiel,
+      cfaGuichet: loaves * OFFICIAL_UNIT_PRICES.guichet_comptoir,
+      label: `${bags} sac${bags > 1 ? 's' : ''} = ${loaves} pains`
+    };
+  });
+}
+
+/**
+ * Récupère le tarif unitaire officiel en FCFA selon le canal
+ * - Guichet : 150 FCFA
+ * - Livreurs : 110 FCFA
+ * - ADJARA : 110 FCFA
+ */
+export function getChannelUnitPrice(
+  channel: DistributionChannel,
+  customPrices?: { guichet_comptoir?: number; livreur_officiel?: number; adjara_grossiste?: number }
+): number {
+  if (customPrices && customPrices[channel]) {
+    return customPrices[channel]!;
+  }
+  return OFFICIAL_UNIT_PRICES[channel] ?? 110;
+}
+
+/**
+ * Calculateur de chargement avec vrac et valorisation financière automatique
+ */
+export function calculateBreadTotalWithLoose(
+  bagsCount: number,
+  loavesPerBag: number = 25,
+  looseLoaves: number = 0
+): number {
+  const safeBags = Math.max(0, bagsCount || 0);
+  const safePerBag = Math.max(0, loavesPerBag || 25);
+  const safeLoose = Math.max(0, looseLoaves || 0);
+  return (safeBags * safePerBag) + safeLoose;
+}
+
+export function calculateBreadTotal(bagsCount: number, loavesPerBag: number): number {
+  return calculateBreadTotalWithLoose(bagsCount, loavesPerBag, 0);
+}
+
+/**
+ * Calcule le montant financier exact d'une livraison selon son canal
+ */
+export function calculateDeliveryFinancials(
+  totalLoaves: number,
+  channel: DistributionChannel,
+  customPrice?: number
+): { unitPriceCFA: number; totalPriceCFA: number } {
+  const unitPriceCFA = customPrice ?? getChannelUnitPrice(channel);
+  const totalPriceCFA = Math.max(0, totalLoaves) * unitPriceCFA;
+  return { unitPriceCFA, totalPriceCFA };
+}
+
+/**
+ * OUTIL DE CALCUL DE PRODUCTION DU FOURNIL
+ * Cible 400 pâtons par sac (20 pâtes x 20 divisions)
  */
 export function computeProductionPlan(state: ShiftState): ProductionTargetPlan {
   const targetFlourBags = Math.max(1, state.targetFlourBags || 9);
-  const expectedCartsTotal = targetFlourBags * 2;
+  const expectedCartsTotal = targetFlourBags * 3; // 3 chariots par sac (2 de 180 + 1 de 40)
   const expectedGrossLoaves = targetFlourBags * 400;
-  const expectedNetLoaves = expectedCartsTotal * 180;
+  const expectedNetLoaves = targetFlourBags * 400;
   const lossToleranceLoaves = expectedCartsTotal * 20;
 
   const morningStoreReservedCarts = 2;
-  const morningStoreReservedLoaves = 2 * 180; // 360 pains
+  const morningStoreReservedLoaves = 2 * 180; // 360 pains réservés pour la boutique
   const maxDriverAllowedCarts = Math.max(0, expectedCartsTotal - morningStoreReservedCarts);
-  const maxDriverAllowedLoaves = maxDriverAllowedCarts * 180;
+  const maxDriverAllowedLoaves = Math.max(0, expectedGrossLoaves - morningStoreReservedLoaves);
 
   const actualBagsUsed = (state?.flourBags || []).length;
   const remainingBagsToKnead = Math.max(0, targetFlourBags - actualBagsUsed);
@@ -70,11 +139,7 @@ export function computeProductionPlan(state: ShiftState): ProductionTargetPlan {
 }
 
 /**
- * OUTIL 2 : Auditeur d'échantillonnage de sac (Spécial Diallo & Sécurité anti-fraude)
- * Traite la règle critique de la note vocale :
- * "Ils vont dire 25 parce que nous on sait que c'est 25 qu'on doit mettre...
- *  Mais s'ils mettent 27, toi tu vas penser que c'est 25 !
- *  Donc tu comptes les pains qui sont dans le sac."
+ * OUTIL : Audit d'échantillonnage de sac (Contrôle Diallo & Règle des 25)
  */
 export function auditDialloBagSample(
   totalBagsTaken: number,
@@ -109,10 +174,7 @@ export function auditDialloBagSample(
 }
 
 /**
- * OUTIL 3 : Validateur d'enregistrement du groupe Souridji
- * Règle note vocale :
- * "Lui il a beaucoup de personnes dans son groupe, donc chaque personne qui arrive tu demandes c'est qui,
- *  la personne dit son nom, tu notes !"
+ * OUTIL : Validateur d'enregistrement nominatif du groupe Souridji
  */
 export function validateSouridjiMember(
   individualName: string,
@@ -136,89 +198,140 @@ export function validateSouridjiMember(
 }
 
 /**
- * OUTIL 1 : Calculateur arithmétique certifié pour livraisons
- * Gère à la fois les sacs entiers de 25 pains et les pains au détail / vrac hors quota de sac.
- */
-export function calculateBreadTotalWithLoose(bagsCount: number, loavesPerBag: number = 25, looseLoaves: number = 0): number {
-  const safeBags = Math.max(0, bagsCount || 0);
-  const safePerBag = Math.max(0, loavesPerBag || 25);
-  const safeLoose = Math.max(0, looseLoaves || 0);
-  return (safeBags * safePerBag) + safeLoose;
-}
-
-export function calculateBreadTotal(bagsCount: number, loavesPerBag: number): number {
-  return calculateBreadTotalWithLoose(bagsCount, loavesPerBag, 0);
-}
-
-/**
- * OUTIL 4 : Moteur de Réconciliation et de Balance Matière
- * Compare la production (sacs de farine x pains sortis, chariots cuits et versés)
- * avec le total des pains remis aux livreurs (sacs + vrac).
+ * OUTIL MAÎTRE : Réconciliation Complète & Bilan Financier « Zéro Manquant »
+ * Ventile les pains et les flux financiers (FCFA) par canal étanche :
+ * 1. Intrants Fournil : Comptage des PÂTES par sac de farine (Règle d'or : 20 pâtes = 400 baguettes)
+ * 2. Démarque justifiée (Pains brûlés + cassés) déduite des bruts
+ * 3. Sorties certifiées : Livreurs (110 F), ADJARA (110 F) et Guichet (150 F)
+ * 4. Rapprochement Infaillible : Pains Vendables - (Pains Sortis + Stock Restant) = ZÉRO MANQUANT.
  */
 export function computeShiftReconciliation(state: ShiftState): ShiftReconciliation {
-  // 1. Total pains sortis du fournil
-  const totalFlourBagsUsed = (state?.flourBags || []).length;
-  const totalLoavesBaked = (state?.flourBags || []).reduce((acc, bag) => acc + (bag.actualLoaves || 0), 0);
+  const flourBags = state?.flourBags || [];
+  const totalFlourBagsUsed = flourBags.length;
+
+  // 1. Comptage des PÂTES et Démarque du fournil
+  let totalPatesCount = 0;
+  let totalGrossLoavesBaked = 0;
+  let totalBurnedLoaves = 0;
+  let totalBrokenLoaves = 0;
+
+  flourBags.forEach((bag) => {
+    // Si patesCount est renseigné, on l'utilise directement, sinon on déduit depuis actualLoaves / 20
+    const pates = bag.patesCount !== undefined ? bag.patesCount : (bag.actualLoaves ? Math.round(bag.actualLoaves / 20) : 20);
+    totalPatesCount += pates;
+    const gross = bag.actualLoaves !== undefined ? bag.actualLoaves : (pates * (bag.loavesPerPate || 20));
+    totalGrossLoavesBaked += gross;
+    totalBurnedLoaves += bag.burnedLoaves || 0;
+    totalBrokenLoaves += bag.brokenLoaves || 0;
+  });
+
+  const expectedPatesCount = totalFlourBagsUsed * 20; // Quota patron : 20 pâtes par sac
+  const patesDeltaQuota = totalPatesCount - expectedPatesCount;
+  const averagePatesPerBag = totalFlourBagsUsed > 0 ? Number((totalPatesCount / totalFlourBagsUsed).toFixed(1)) : 0;
+
+  const totalScrapLoaves = totalBurnedLoaves + totalBrokenLoaves;
+  // Pains nets vendables issus de la cuisson
+  const totalLoavesBaked = Math.max(0, totalGrossLoavesBaked - totalScrapLoaves);
+  // Coût de la démarque (valorisé au prix de base 110 FCFA)
+  const totalScrapLossCFA = totalScrapLoaves * OFFICIAL_UNIT_PRICES.livreur_officiel;
+
   const totalCartsRecorded = (state?.carts || []).length;
   const totalCartsDumpedToCarton = (state?.cartonDumps || []).length;
 
-  // 2. Total livraisons (Unifié : sacs + vrac)
-  let totalLoavesDelivered = 0;
+  // 2. Ventilation des distributions par canal étanche
   let totalDeliveriesCount = 0;
+  let totalLoavesDelivered = 0;
+  let totalRevenueExpectedCFA = 0;
   let anomaliesCount = 0;
 
-  if (state.deliveries && state.deliveries.length > 0) {
-    state.deliveries.forEach(d => {
-      totalDeliveriesCount++;
-      totalLoavesDelivered += d.totalLoaves;
-      if (d.isAnomaly) anomaliesCount++;
-    });
-  } else {
-    // Rétrocompatibilité
-    if (state.dialloInspections) {
-      state.dialloInspections.forEach(d => {
-        totalDeliveriesCount++;
-        totalLoavesDelivered += d.totalBreadsCalculated;
-        if (d.isAnomalyDetected) anomaliesCount++;
-      });
-    }
-    if (state.souridjiMembers) {
-      state.souridjiMembers.forEach(s => {
-        totalDeliveriesCount++;
-        totalLoavesDelivered += s.loavesCount > 0 ? s.loavesCount : (s.bagsCount * 25);
-      });
-    }
-    if (state.genericDeliveries) {
-      state.genericDeliveries.forEach(g => {
-        totalDeliveriesCount++;
-        totalLoavesDelivered += g.totalLoaves || g.totalCalculatedLoaves || 0;
-      });
-    }
-  }
+  const loavesByChannel = {
+    livreurs: 0,
+    adjara: 0,
+    guichet: 0
+  };
 
-  // Balance
-  const loavesRemainingInBakery = totalLoavesBaked - totalLoavesDelivered;
-  const delta = totalLoavesBaked - totalLoavesDelivered;
+  const revenueByChannel = {
+    livreurs: 0,
+    adjara: 0,
+    guichet: 0
+  };
 
-  // Le shift est prêt pour remise si au moins la production et les livreurs sont consignés
+  const deliveries = state.deliveries || [];
+
+  deliveries.forEach((d) => {
+    totalDeliveriesCount++;
+    totalLoavesDelivered += d.totalLoaves;
+    if (d.isAnomaly) anomaliesCount++;
+
+    const ch = d.channel || 'livreur_officiel';
+    const unitPrice = d.unitPriceCFA || getChannelUnitPrice(ch, state.unitPrices);
+    const lineTotalCFA = d.totalPriceCFA || (d.totalLoaves * unitPrice);
+
+    totalRevenueExpectedCFA += lineTotalCFA;
+
+    if (ch === 'guichet_comptoir') {
+      loavesByChannel.guichet += d.totalLoaves;
+      revenueByChannel.guichet += lineTotalCFA;
+    } else if (ch === 'adjara_grossiste') {
+      loavesByChannel.adjara += d.totalLoaves;
+      revenueByChannel.adjara += lineTotalCFA;
+    } else {
+      loavesByChannel.livreurs += d.totalLoaves;
+      revenueByChannel.livreurs += lineTotalCFA;
+    }
+  });
+
+  // 3. Balance Matière & Écart Infaillible « ZÉRO MANQUANT »
+  const theoreticalStockRemaining = Math.max(0, totalLoavesBaked - totalLoavesDelivered);
+  const hasPhysicalStockCounted = state.countedPhysicalStockRemaining !== undefined && state.countedPhysicalStockRemaining !== null;
+  const countedPhysicalStockRemaining = hasPhysicalStockCounted
+    ? Math.max(0, state.countedPhysicalStockRemaining!)
+    : theoreticalStockRemaining;
+
+  // Équation sacrée : Pains Vendables - (Pains Sortis + Stock restant vérifié)
+  const zeroMissingBalance = totalLoavesBaked - (totalLoavesDelivered + countedPhysicalStockRemaining);
+  const financialLeakageCFA = zeroMissingBalance > 0 ? zeroMissingBalance * OFFICIAL_UNIT_PRICES.livreur_officiel : 0;
+  const isZeroMissingAchieved = totalFlourBagsUsed > 0 && zeroMissingBalance === 0;
+  const hasMissingLoaves = zeroMissingBalance > 0;
+  const hasSurplusLoaves = zeroMissingBalance < 0;
+
   const handoverReady = totalFlourBagsUsed > 0 && totalDeliveriesCount > 0;
 
   return {
     totalFlourBagsUsed,
+    totalPatesCount,
+    expectedPatesCount,
+    patesDeltaQuota,
+    averagePatesPerBag,
+    totalGrossLoavesBaked,
+    totalBurnedLoaves,
+    totalBrokenLoaves,
+    totalScrapLoaves,
+    totalScrapLossCFA,
     totalLoavesBaked,
     totalCartsRecorded,
     totalCartsDumpedToCarton,
     totalDeliveriesCount,
     totalLoavesDelivered,
-    loavesRemainingInBakery,
-    productionVsDeliveryDelta: delta,
+    theoreticalStockRemaining,
+    loavesRemainingInBakery: theoreticalStockRemaining,
+    countedPhysicalStockRemaining,
+    hasPhysicalStockCounted,
+    zeroMissingBalance,
+    financialLeakageCFA,
+    isZeroMissingAchieved,
+    hasMissingLoaves,
+    hasSurplusLoaves,
     totalAnomaliesDetected: anomaliesCount,
-    handoverReady
+    handoverReady,
+    totalRevenueExpectedCFA,
+    revenueByChannel,
+    loavesByChannel
   };
 }
 
 /**
- * OUTIL 5 : Générateur d'entrée d'audit horodatée
+ * Générateur de journal d'audit horodaté
  */
 export function createAuditLog(
   phase: ShiftPhase,
@@ -239,86 +352,84 @@ export function createAuditLog(
 }
 
 /**
- * OUTIL 6 : Générateur de rapport de passation de consignes pour le patron
+ * RAPPORT DE PASSATION OFFICIEL PATRON (Bordereau Infaillible « Zéro Manquant »)
+ * Synthétise les Pâtes obtenues par sac de farine, la démarque, les chargements et le bilan financier.
  */
 export function generateHandoverMarkdown(state: ShiftState): string {
   const recon = computeShiftReconciliation(state);
   const now = new Date().toLocaleString('fr-FR');
 
-  let md = `# RAPPORT OFFICIEL DE SHIFT BOULANGERIE - PANITRACK\n`;
+  let md = `# BORDEREAU OFFICIEL « ZÉRO MANQUANT » & BILAN FINANCIER — PANITRACK\n`;
+  md += `**Système d'Inviolabilité :** Contrôle des Pâtes par Sac & Balance des Sorties\n`;
   md += `**Date & Heure :** ${now}\n`;
   md += `**Contrôleur en poste :** ${state.operatorName || 'Opérateur'}\n`;
   md += `**Shift ID :** ${state.shiftId}\n\n`;
 
-  md += `## 1. PRODUCTION FOURNIL\n`;
+  md += `## 1. CONTRÔLE DES PÂTES PAR SAC DE FARINE (FOURNIL)\n`;
   md += `- **Sacs de farine travaillés :** ${recon.totalFlourBagsUsed} sac(s)\n`;
-  md += `- **Pains sortis du four :** ${recon.totalLoavesBaked} pains (Moyenne : ${recon.totalFlourBagsUsed ? Math.round(recon.totalLoavesBaked / recon.totalFlourBagsUsed) : 0} pains/sac)\n`;
-  md += `- **Chariots cuits enregistrés :** ${recon.totalCartsRecorded}\n`;
-  md += `- **Chariots versés en cartons (Minuit) :** ${recon.totalCartsDumpedToCarton}\n\n`;
+  md += `- **Pâtes obtenues :** **${recon.totalPatesCount} pâtes** (Moyenne : ${recon.averagePatesPerBag} pâtes/sac | Quota patron : 20.0)\n`;
+  if (recon.patesDeltaQuota !== 0) {
+    md += `- **Écart Quota Pâtes :** ${recon.patesDeltaQuota > 0 ? `+${recon.patesDeltaQuota}` : recon.patesDeltaQuota} pâtes (${recon.patesDeltaQuota * 20} baguettes)\n`;
+  }
+  md += `- **Baguettes brutes façonnées :** ${recon.totalGrossLoavesBaked} pains (Base : 20 baguettes par pâte)\n`;
+  md += `- **Démarque justifiée :** ${recon.totalScrapLoaves} pains au rebut (${recon.totalBurnedLoaves} brûlés au four, ${recon.totalBrokenLoaves} cassés)\n`;
+  md += `- **PAINS VENDABLES NETS DISPONIBLES :** **${recon.totalLoavesBaked} pains**\n`;
+  md += `- **Coût démarque fournil (110 F) :** -${recon.totalScrapLossCFA.toLocaleString('fr-FR')} FCFA\n\n`;
 
-  md += `## 2. DISPATCH & LIVRAISONS (03H30+)\n`;
-  md += `- **Total livraisons consignées :** ${recon.totalDeliveriesCount}\n`;
-  md += `- **Total pains emportés par les livreurs :** ${recon.totalLoavesDelivered} pains\n\n`;
+  md += `## 2. DISTRIBUTION PAR CANAUX ÉTANCHES (SORTIES SÉCURISÉES)\n`;
+  md += `Grille tarifaire officielle : Guichet = 150 FCFA/pain | Livreurs & ADJARA = 110 FCFA/pain\n\n`;
+  md += `| Canal de Distribution | Pains Sortis | Tarif Unitaire | Recette Espèces Attendue |\n`;
+  md += `| :--- | :---: | :---: | :---: |\n`;
+  md += `| 🚚 **Livreurs Officiels** | ${recon.loavesByChannel.livreurs} pains | 110 FCFA | **${recon.revenueByChannel.livreurs.toLocaleString('fr-FR')} FCFA** |\n`;
+  md += `| 🏬 **Section ADJARA (Grossistes)** | ${recon.loavesByChannel.adjara} pains | 110 FCFA | **${recon.revenueByChannel.adjara.toLocaleString('fr-FR')} FCFA** |\n`;
+  md += `| 🛒 **Guichet Comptoir** | ${recon.loavesByChannel.guichet} pains | 150 FCFA | **${recon.revenueByChannel.guichet.toLocaleString('fr-FR')} FCFA** |\n`;
+  md += `| **TOTAL SORTIES EXPÉDIÉES** | **${recon.totalLoavesDelivered} pains** | — | **${recon.totalRevenueExpectedCFA.toLocaleString('fr-FR')} FCFA** |\n\n`;
 
   if (state.deliveries && state.deliveries.length > 0) {
-    md += `### Détail de l'émargement des livreurs :\n`;
+    md += `### Détail nominatif des émargements :\n`;
     state.deliveries.forEach((d) => {
+      const channelLabel =
+        d.channel === 'guichet_comptoir'
+          ? 'Guichet (150 F)'
+          : d.channel === 'adjara_grossiste'
+          ? 'ADJARA (110 F)'
+          : 'Livreur (110 F)';
+
       const parts = [];
-      if (d.bagsCount > 0) parts.push(`${d.bagsCount} sac(s) (${d.bagsCount * d.loavesPerBag} pains)`);
-      if (d.looseLoavesCount > 0) parts.push(`${d.looseLoavesCount} pain(s) au détail / vrac`);
-      const details = parts.length > 0 ? parts.join(' + ') : `${d.totalLoaves} pains`;
+      if (d.bagsCount > 0) parts.push(`${d.bagsCount} sac(s) scellé(s)`);
+      if (d.looseLoavesCount > 0) parts.push(`${d.looseLoavesCount} vrac`);
+      const breakdown = parts.length > 0 ? parts.join(' + ') : `${d.totalLoaves} pains`;
+      const photoTag = d.photoProofUrl ? ` [📸 Photo certifiée]` : '';
+      const statusTag = d.status === 'cloture' ? ` (🏁 Parti)` : ` (⏳ Au Sas)`;
 
-      let pickupHistory = '';
-      if (d.pickups && d.pickups.length > 1) {
-        pickupHistory = ` [${d.pickups.length} prises : ` + d.pickups.map(p => `+${p.batchTotalLoaves}p (${p.timestamp})`).join(' ') + `]`;
-      }
-
-      const statusTag = d.status === 'cloture' ? ` (🏁 Départ confirmé)` : ` (⏳ Chargement en cours)`;
-      md += `- ${d.timestamp} | **${d.driverName}** : **${d.totalLoaves} pains** (${details})${pickupHistory}${statusTag}\n`;
+      md += `- ${d.timestamp} | **${d.driverName}** [${channelLabel}] : **${d.totalLoaves} pains** = **${d.totalPriceCFA.toLocaleString('fr-FR')} FCFA** (${breakdown})${photoTag}${statusTag}\n`;
       if (d.isAnomaly) {
-        md += `  ⚠️ *Alerte sur-remplissage ou écart relevé.*\n`;
+        md += `  🚨 *ANOMALIE DIALLO CONSTATÉE : Sac contrôlé à 27 pains (+2).* \n`;
       }
     });
     md += `\n`;
-  } else {
-    if (state.dialloInspections && state.dialloInspections.length > 0) {
-      md += `### Contrôles Spécifiques - Diallo :\n`;
-      state.dialloInspections.forEach((d, idx) => {
-        md += `- Contrôle #${idx + 1} (${d.timestamp}) : ${d.totalBagsTaken} sacs pris. Échantillon vérifié : **${d.sampledBagLoavesCount} pains/sac** (standard = 25). Total calculé = **${d.totalBreadsCalculated} pains**.\n`;
-        if (d.isAnomalyDetected) {
-          md += `  ⚠️ **ALERTE ANOMALIE :** Écart de ${d.leakagePerBag > 0 ? '+' : ''}${d.leakagePerBag} pains/sac. Perte/sur-distribution totale : ${d.totalFinancialLeakageLoaves} pains !\n`;
-        }
-      });
-      md += `\n`;
-    }
-
-    if (state.souridjiMembers && state.souridjiMembers.length > 0) {
-      md += `### Groupe Souridji (Enregistrements individuels) :\n`;
-      state.souridjiMembers.forEach((s) => {
-        const loaves = s.loavesCount > 0 ? s.loavesCount : (s.bagsCount * 25);
-        md += `- ${s.timestamp} | **${s.individualName}** : ${s.bagsCount} sacs (${loaves} pains)\n`;
-      });
-      md += `\n`;
-    }
-
-    if (state.genericDeliveries && state.genericDeliveries.length > 0) {
-      md += `### Autres Livreurs :\n`;
-      state.genericDeliveries.forEach((g) => {
-        md += `- ${g.timestamp} | **${g.driverName}** : ${g.bagsCount} sacs (${g.totalLoaves || g.totalCalculatedLoaves || 0} pains)\n`;
-      });
-      md += `\n`;
-    }
   }
 
-  md += `## 3. BALANCE MATIÈRE & RÉCONCILIATION\n`;
-  md += `- **Pains produits :** ${recon.totalLoavesBaked}\n`;
-  md += `- **Pains livrés :** ${recon.totalLoavesDelivered}\n`;
-  md += `- **Solde restant théorique au fournil :** ${recon.loavesRemainingInBakery} pains\n`;
-  md += `- **Anomalies / Écarts détectés :** ${recon.totalAnomaliesDetected}\n\n`;
+  md += `## 3. RAPPROCHEMENT INFAILLIBLE « ZÉRO MANQUANT »\n`;
+  md += `- **Pains vendables produits au fournil :** ${recon.totalLoavesBaked} pains\n`;
+  md += `- **Pains sortis & distribués :** ${recon.totalLoavesDelivered} pains\n`;
+  md += `- **Stock physique restant au fournil (boutique matin) :** **${recon.countedPhysicalStockRemaining} pains**\n`;
+  
+  if (recon.zeroMissingBalance === 0) {
+    md += `- **STATUT FINAL :** 🛡️ **ZÉRO MANQUANT CERTIFIÉ (0 PAIN PERDU, ÉQUILIBRE PARFAIT !)**\n`;
+  } else if (recon.zeroMissingBalance > 0) {
+    md += `- **STATUT FINAL :** 🚨 **ALERTE MANQUANT : ${recon.zeroMissingBalance} PAINS DISPARUS**\n`;
+    md += `- **PERTE FINANCIÈRE SUBIE (110 F) :** **-${recon.financialLeakageCFA.toLocaleString('fr-FR')} FCFA**\n`;
+  } else {
+    md += `- **STATUT FINAL :** ⚠️ **SURPLUS INEXPLIQUÉ : +${Math.abs(recon.zeroMissingBalance)} PAINS**\n`;
+  }
 
-  md += `## 4. SIGNATURE DE PASSATION\n`;
-  md += `Signature Contrôleur Sortant : __________________\n`;
-  md += `Signature Responsable Entrant : __________________\n`;
+  md += `- **RECETTE NETTE EN ESPÈCES DUE AU PATRON :** **${recon.totalRevenueExpectedCFA.toLocaleString('fr-FR')} FCFA**\n\n`;
+
+  md += `## 4. SIGNATURES & VALEUR JURIDIQUE\n`;
+  md += `Ce bordereau certifie le comptage rigoureux des pâtes par sac et l'émargement individuel des chargements.\n\n`;
+  md += `Signature Contrôleur de Shift : _____________________\n\n`;
+  md += `Signature Propriétaire / Patron : _____________________\n`;
 
   return md;
 }

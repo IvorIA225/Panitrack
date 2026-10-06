@@ -154,6 +154,35 @@ Votre intuition est **100% exacte** !
 3. **⚠️ VIGILANCE CONTRÔLEUR :** Ces 20 pains doivent être connus et surveillés ! S'il y a 0 casse cette nuit-là, les 20 pains ne doivent pas "disparaître" dans la nature (risque de coulage ou dons non tracés). PaniTrack enregistre la base nette de 180 pains tout en traçant le tampon de 20 pains.`;
     }
 
+    if (q.includes('pate') || q.includes('pâte') || q.includes('diviseuse') || q.includes('farine')) {
+      const recon = computeShiftReconciliation(state);
+      return `🥖 **Règle Fondamentale des PÂTES par Sac de Farine :**
+- **Norme stricte du patron : 20 PÂTES par sac de 50 kg**.
+- Chaque pâte passe dans la diviseuse à 20 alvéoles et donne **20 baguettes**.
+- **1 Sac de farine = 20 pâtes = 400 baguettes brutes**.
+- Actuellement : **${recon.totalPatesCount} pâtes** sorties sur **${recon.totalFlourBagsUsed} sac(s)** (Moyenne : **${recon.averagePatesPerBag} pâtes/sac**).
+- Si un sac donne moins de 20 pâtes (ex: 19), c'est 20 baguettes de perdues (-2 200 FCFA). Veillez à compter chaque pâte dès la sortie du pétrin !`;
+    }
+
+    if (q.includes('manquant') || q.includes('ecart') || q.includes('écart') || q.includes('zero') || q.includes('zéro') || q.includes('perte')) {
+      const recon = computeShiftReconciliation(state);
+      if (recon.zeroMissingBalance === 0) {
+        return `🛡️ **VERROUILLAGE ZÉRO MANQUANT ATTEINT !**
+- Pains Vendables Fournil : **${recon.totalLoavesBaked} pains** (${recon.totalPatesCount} pâtes).
+- Pains Distribués (Tournées + Guichet) : **${recon.totalLoavesDelivered} pains** (${recon.totalRevenueExpectedCFA.toLocaleString('fr-FR')} FCFA).
+- Stock Restant Fournil : **${recon.countedPhysicalStockRemaining} pains**.
+- **Écart : EXACTEMENT 0 PAIN !** Tous les pains façonnés sont justifiés à l'encaissement ou en boutique.`;
+      } else if (recon.zeroMissingBalance > 0) {
+        return `🚨 **ATTENTION : ${recon.zeroMissingBalance} PAINS MANQUANTS DÉTECTÉS !**
+- Perte financière brute : **-${recon.financialLeakageCFA.toLocaleString('fr-FR')} FCFA**.
+- Pains Vendables Fournil : **${recon.totalLoavesBaked}**.
+- Livrés + Stock Restant : **${recon.totalLoavesDelivered + recon.countedPhysicalStockRemaining}**.
+👉 Causes possibles : 1. Pâtes insuffisantes au pétrin (< 20/sac). 2. Sacs livreurs sur-remplis (Diallo à 27). 3. Pains sortis sans émargement.`;
+      } else {
+        return `⚠️ **Surplus inexpliqué de +${Math.abs(recon.zeroMissingBalance)} pains** : vous avez distribué plus de pains que déclarés au fournil. Vérifiez si un sac de farine n'a pas été omis au pointage.`;
+      }
+    }
+
     if (q.includes('diallo') || q.includes('25') || q.includes('27')) {
       return `🥖 **Règle d'or pour Diallo :** Diallo commande par sacs supposés contenir 25 pains. La consigne vocale est formelle : **compte physiquement les pains dans le sac** ! Parfois, les ouvriers en mettent 27. Si tu ne vérifies pas et que tu notes 25, la boulangerie perd 2 pains par sac (soit 60 pains pour 30 sacs !). Utilise l'outil "Contrôle Diallo" pour calculer automatiquement sur le réel.`;
     }

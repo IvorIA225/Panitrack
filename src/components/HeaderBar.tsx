@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ShieldCheck, Sparkles, FileText, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  Clock,
+  ShieldCheck,
+  Sparkles,
+  FileText,
+  RotateCcw,
+  AlertTriangle,
+  MoreVertical,
+  Layers,
+  Bot,
+  X
+} from 'lucide-react';
 import { ShiftState } from '../wat/types';
 import { computeShiftReconciliation } from '../wat/tools';
 import { NetworkStatusPill } from './NetworkStatusPill';
@@ -10,7 +21,10 @@ interface HeaderBarProps {
   onOpenAgent: () => void;
   onLoadDemo: () => void;
   onResetShift: () => void;
+  onOpenProtocol: () => void;
   unreadAlertsCount: number;
+  isHeroVisible?: boolean;
+  onToggleHero?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -19,9 +33,13 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenAgent,
   onLoadDemo,
   onResetShift,
-  unreadAlertsCount
+  onOpenProtocol,
+  unreadAlertsCount,
+  isHeroVisible = true,
+  onToggleHero
 }) => {
   const [time, setTime] = useState<string>(new Date().toLocaleTimeString('fr-FR'));
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const recon = computeShiftReconciliation(state);
 
   useEffect(() => {
@@ -32,108 +50,135 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   }, []);
 
   return (
-    <header className="glass-card" style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+    <header className="glass-card header-bar" style={{ padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
         
         {/* Logo & Identité */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
             background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 15px rgba(245, 158, 11, 0.4)'
+            boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
+            flexShrink: 0
           }}>
-            <span style={{ fontSize: '22px' }}>🥖</span>
+            <span style={{ fontSize: '20px' }}>🥖</span>
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h1 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
                 PaniTrack
               </h1>
-              <span className="badge badge-amber" style={{ fontSize: '10px' }}>Framework WAT</span>
+              <span className="badge badge-amber header-desktop-only" style={{ fontSize: '9.5px', padding: '2px 7px' }}>
+                Zéro Manquant
+              </span>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Système Automatisé de Contrôle & Réconciliation de Shift
+            <p className="header-desktop-only" style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '1px 0 0 0' }}>
+              Shift Boulangerie & Distribution Sécurisée
             </p>
           </div>
         </div>
 
-        {/* Statuts & Horloge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Centre : Horloge + Recette Live (adaptatif) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <NetworkStatusPill />
-          <div style={{
+          
+          <div className="header-time-pill" style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             background: 'rgba(15, 23, 42, 0.8)',
-            padding: '8px 14px',
-            borderRadius: '10px',
+            padding: '6px 10px',
+            borderRadius: '8px',
             border: '1px solid var(--border-subtle)'
           }}>
-            <Clock size={16} color="var(--amber-light)" />
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '15px', color: 'var(--amber-light)' }}>
+            <Clock size={14} color="var(--amber-light)" />
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '13px', color: 'var(--amber-light)' }}>
               {time}
             </span>
           </div>
 
+          {/* Badge Recette Financière */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
             background: 'rgba(16, 185, 129, 0.12)',
-            padding: '8px 12px',
-            borderRadius: '10px',
+            padding: '6px 10px',
+            borderRadius: '8px',
             border: '1px solid rgba(16, 185, 129, 0.3)'
           }}>
-            <ShieldCheck size={16} color="var(--success)" />
-            <span style={{ fontSize: '12.5px', color: 'var(--success)', fontWeight: 600 }}>
-              Shift Sécurisé : {state.shiftId}
+            <ShieldCheck size={14} color="var(--success)" />
+            <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 700 }}>
+              {recon.totalRevenueExpectedCFA.toLocaleString('fr-FR')} <span style={{ fontSize: '10px' }}>FCFA</span>
             </span>
           </div>
         </div>
 
-        {/* Boutons d'actions rapides */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          
+        {/* Boutons d'actions rapides Desktop */}
+        <div className="header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Ligne Directive */}
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenProtocol}
+            title="Consulter le protocole d'exécution rigoureux et la checklist"
+            style={{ fontSize: '12.5px', padding: '7px 12px', color: 'var(--amber-light)' }}
+          >
+            <ShieldCheck size={14} />
+            <span>Directive</span>
+          </button>
+
           {/* Démo Scénario Note Vocale */}
           <button 
             className="btn btn-secondary" 
             onClick={onLoadDemo}
             title="Charger les données du cas réel décrit dans la note vocale WhatsApp"
-            style={{ fontSize: '13px', padding: '8px 12px' }}
+            style={{ fontSize: '12.5px', padding: '7px 11px' }}
           >
-            <Sparkles size={15} color="var(--amber-light)" />
-            <span>Scénario Note Vocale</span>
+            <Sparkles size={14} color="var(--amber-light)" />
+            <span>Démo Note Vocale</span>
           </button>
 
-          {/* Copilote IA WAT */}
+          {/* Toggle Bannière 3D */}
+          {onToggleHero && (
+            <button
+              className="btn btn-secondary"
+              onClick={onToggleHero}
+              title={isHeroVisible ? "Masquer la bannière 3D pour alléger l'écran" : "Afficher la bannière 3D"}
+              style={{ fontSize: '12.5px', padding: '7px 11px' }}
+            >
+              <Layers size={14} />
+              <span>{isHeroVisible ? 'Mode Épuré' : 'Bannière 3D'}</span>
+            </button>
+          )}
+
+          {/* Copilote IA */}
           <button 
             className="btn btn-secondary" 
             onClick={onOpenAgent}
-            style={{ fontSize: '13px', padding: '8px 14px', position: 'relative' }}
+            style={{ fontSize: '12.5px', padding: '7px 12px', position: 'relative' }}
           >
-            <span>🤖</span>
+            <Bot size={14} />
             <span>Copilote IA</span>
             {unreadAlertsCount > 0 && (
               <span style={{
                 position: 'absolute',
-                top: '-5px',
-                right: '-5px',
+                top: '-4px',
+                right: '-4px',
                 background: '#ef4444',
                 color: '#fff',
                 borderRadius: '999px',
-                fontSize: '10px',
+                fontSize: '9px',
                 fontWeight: 700,
-                width: '18px',
-                height: '18px',
+                width: '16px',
+                height: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 8px rgba(239, 68, 68, 0.8)'
+                justifyContent: 'center'
               }}>
                 {unreadAlertsCount}
               </span>
@@ -144,10 +189,10 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <button 
             className="btn btn-primary" 
             onClick={onOpenReport}
-            style={{ fontSize: '13px', padding: '8px 14px' }}
+            style={{ fontSize: '12.5px', padding: '7px 13px' }}
           >
-            <FileText size={15} />
-            <span>Rapport Patron ({recon.handoverReady ? 'Prêt' : 'En cours'})</span>
+            <FileText size={14} />
+            <span>Bordereau Patron</span>
           </button>
 
           {/* Reset */}
@@ -155,41 +200,106 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             className="btn btn-secondary" 
             onClick={onResetShift}
             title="Réinitialiser pour un nouveau shift vierge"
-            style={{ padding: '8px 10px' }}
+            style={{ padding: '7px 9px' }}
           >
-            <RotateCcw size={15} color="var(--text-muted)" />
+            <RotateCcw size={14} color="var(--text-muted)" />
+          </button>
+        </div>
+
+        {/* Bouton Menu Mobile (3 points) */}
+        <div className="header-mobile-toggle">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            style={{ padding: '7px 10px', borderRadius: '10px' }}
+            aria-label="Options et raccourcis"
+          >
+            {isMobileMenuOpen ? <X size={18} /> : <MoreVertical size={18} />}
           </button>
         </div>
       </div>
+
+      {/* Menu dépliant Mobile pour les actions secondaires */}
+      {isMobileMenuOpen && (
+        <div className="header-mobile-dropdown glass-card" style={{
+          padding: '12px',
+          background: 'rgba(15, 23, 42, 0.98)',
+          border: '1px solid var(--border-active)',
+          borderRadius: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => { onOpenProtocol(); setIsMobileMenuOpen(false); }}
+            style={{ justifyContent: 'flex-start', fontSize: '13px', padding: '9px 12px' }}
+          >
+            <ShieldCheck size={16} color="var(--amber-light)" />
+            <span>🛡️ Ligne Directive Zéro Manquant</span>
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => { onLoadDemo(); setIsMobileMenuOpen(false); }}
+            style={{ justifyContent: 'flex-start', fontSize: '13px', padding: '9px 12px' }}
+          >
+            <Sparkles size={16} color="var(--amber-light)" />
+            <span>✨ Charger Scénario Note Vocale</span>
+          </button>
+
+          {onToggleHero && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { onToggleHero(); setIsMobileMenuOpen(false); }}
+              style={{ justifyContent: 'flex-start', fontSize: '13px', padding: '9px 12px' }}
+            >
+              <Layers size={16} />
+              <span>{isHeroVisible ? '👁️ Masquer la Bannière 3D' : '👁️ Afficher la Bannière 3D'}</span>
+            </button>
+          )}
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => { onResetShift(); setIsMobileMenuOpen(false); }}
+            style={{ justifyContent: 'flex-start', fontSize: '13px', padding: '9px 12px', color: '#f87171' }}
+          >
+            <RotateCcw size={16} />
+            <span>🔄 Réinitialiser le Shift (Nouveau)</span>
+          </button>
+        </div>
+      )}
 
       {/* Mini barre d'alerte en cas d'anomalie critique */}
       {recon.totalAnomaliesDetected > 0 && (
         <div style={{
           background: 'rgba(239, 68, 68, 0.15)',
           border: '1px solid rgba(239, 68, 68, 0.4)',
-          borderRadius: '10px',
-          padding: '8px 14px',
+          borderRadius: '8px',
+          padding: '6px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontSize: '13px',
+          fontSize: '12px',
           color: '#fca5a5'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={16} color="#ef4444" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={14} color="#ef4444" />
             <span>
-              <strong>Vigilance active :</strong> {recon.totalAnomaliesDetected} anomalie(s) détectée(s) (dont sac Diallo vérifié à plus de 25 pains).
+              <strong>Vigilance :</strong> {recon.totalAnomaliesDetected} anomalie(s) détectée(s) (Sac Diallo tracé).
             </span>
           </div>
           <button 
             className="btn btn-danger" 
-            style={{ padding: '4px 10px', fontSize: '11px' }}
+            style={{ padding: '3px 8px', fontSize: '10.5px' }}
             onClick={onOpenReport}
           >
-            Voir les détails de l'audit
+            Détails
           </button>
         </div>
       )}
     </header>
   );
 };
+export default HeaderBar;

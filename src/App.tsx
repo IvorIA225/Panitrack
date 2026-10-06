@@ -3,8 +3,6 @@ import {
   ShiftState,
   ShiftPhase,
   FlourBagEntry,
-  CartEntry,
-  CartonDumpEntry,
   DeliveryEntry
 } from './wat/types';
 import {
@@ -23,19 +21,26 @@ import { HeaderBar } from './components/HeaderBar';
 import { ThreeDimensionalBreadHero } from './components/ThreeDimensionalBreadHero';
 import { SimplePatesFarinePage } from './components/SimplePatesFarinePage';
 import { CleanDispatchPage } from './components/CleanDispatchPage';
-import { PhaseBaking } from './components/PhaseBaking';
-import { PhaseCartoning } from './components/PhaseCartoning';
-import { PhaseOnboarding } from './components/PhaseOnboarding';
+import { ZeroManquantControlView } from './components/ZeroManquantControlView';
 import { HandoverReportModal } from './components/HandoverReportModal';
+import { ProtocolZeroManquantModal } from './components/ProtocolZeroManquantModal';
 import { AgentDrawer } from './components/AgentDrawer';
 import { AuditLogViewer } from './components/AuditLogViewer';
-import { Truck, Flame, Box, UserCheck, FileCheck, Layers, ShoppingBag, Settings } from 'lucide-react';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { Truck, ShoppingBag, ShieldCheck, FileCheck } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [state, setState] = useState<ShiftState>(() => loadShiftState());
-  const [activeTab, setActiveTab] = useState<'pates' | 'dispatch' | 'advanced_baking' | 'advanced_cartoning' | 'onboarding'>('pates');
+  const [activeTab, setActiveTab] = useState<'pates' | 'dispatch' | 'reconciliation'>('pates');
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
   const [isAgentOpen, setIsAgentOpen] = useState(false);
+  const [isHeroVisible, setIsHeroVisible] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 768;
+    }
+    return true;
+  });
 
   const dispatchSectionRef = useRef<HTMLDivElement>(null);
   const bakingSectionRef = useRef<HTMLDivElement>(null);
@@ -48,7 +53,7 @@ export const App: React.FC = () => {
   const recon = computeShiftReconciliation(state);
 
   // ==========================================
-  // HANDLERS LIVRAISONS ÉPURÉES (SACS + VRAC)
+  // HANDLERS EXPÉDITIONS & LIVRAISONS
   // ==========================================
   const handleAddDelivery = (delivery: DeliveryEntry) => {
     setState((prev) => {
@@ -129,34 +134,47 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
   };
 
   // ==========================================
-  // HANDLERS PRODUCTION & FOURNIL
+  // HANDLERS COMPTAGE PÂTES & FOURNIL
   // ==========================================
-  const handleUpdateTargetFlourBags = (count: number) => {
-    const safeCount = Math.max(1, count || 1);
-    setState((prev) => ({
-      ...prev,
-      targetFlourBags: safeCount,
-      auditLogs: [
-        ...prev.auditLogs,
-        createAuditLog(
-          ShiftPhase.PHASE_1_BAKING,
-          'production',
-          `Cible de production mise à jour : ${safeCount} sacs de farine (${safeCount * 2} chariots, ${safeCount * 360} pains vendables).`,
-          'info'
-        )
-      ]
-    }));
-  };
+  const handleAddFlourBag = (
+    loaves: number,
+    notes?: string,
+    burned?: number,
+    broken?: number,
+    cart1?: number,
+    cart2?: number,
+    cart3?: number,
+    patesCount?: number
+  ) => {
+    const burnedLoaves = burned || 0;
+    const brokenLoaves = broken || 0;
+    const netVendable = Math.max(0, loaves - (burnedLoaves + brokenLoaves));
+    const safePates = patesCount !== undefined ? patesCount : Math.round(loaves / 20);
+    const deltaQuotaLoaves = (safePates * 20) - 400;
 
-  const handleAddFlourBag = (loaves: number, notes?: string) => {
     const newBag: FlourBagEntry = {
       id: 'bag_' + Date.now(),
       timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       bagIndex: state.flourBags.length + 1,
+      patesCount: safePates,
+      loavesPerPate: 20,
       expectedLoaves: 400,
       actualLoaves: loaves,
+      cart1Loaves: cart1,
+      cart2Loaves: cart2,
+      cart3Loaves: cart3,
+      burnedLoaves,
+      brokenLoaves,
+      netVendableLoaves: netVendable,
+      deltaQuotaLoaves,
       notes
     };
+
+    const deltaSign = deltaQuotaLoaves === 0
+      ? 'Quota parfait 20 pâtes'
+      : deltaQuotaLoaves > 0
+      ? `+${deltaQuotaLoaves / 20} pâte (+${deltaQuotaLoaves} b.)`
+      : `${deltaQuotaLoaves / 20} pâte (${deltaQuotaLoaves} b.)`;
 
     setState((prev) => ({
       ...prev,
@@ -166,8 +184,8 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
         createAuditLog(
           ShiftPhase.PHASE_1_BAKING,
           'production',
-          `Sac de farine #${newBag.bagIndex} ouvert. ${loaves} pains sortis.`,
-          'success'
+          `Sac #${newBag.bagIndex} contrôlé : ${safePates} pâtes = ${loaves} baguettes brutes [${deltaSign}] (Vendables: ${netVendable}, Brûlés: ${burnedLoaves}, Cassés: ${brokenLoaves}).`,
+          deltaQuotaLoaves < 0 ? 'warning' : 'success'
         )
       ]
     }));
@@ -184,87 +202,29 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
     }));
   };
 
-  const handleAddCart = (loavesCount: number, physicalCapacity: number = 200) => {
-    const buffer = physicalCapacity > loavesCount ? physicalCapacity - loavesCount : 0;
-    const newCart: CartEntry = {
-      id: 'cart_' + Date.now(),
-      timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      cartNumber: state.carts.length + 1,
-      loavesCount,
-      physicalCapacity,
-      lossCompensationBuffer: buffer,
-      status: 'sorti_chariot'
-    };
-
+  const handleUpdatePhysicalStock = (count: number) => {
     setState((prev) => ({
       ...prev,
-      carts: [...prev.carts, newCart],
+      countedPhysicalStockRemaining: count,
       auditLogs: [
         ...prev.auditLogs,
         createAuditLog(
-          ShiftPhase.PHASE_1_BAKING,
+          ShiftPhase.PHASE_4_HANDOVER,
           'production',
-          `Chariot #${newCart.cartNumber} enregistré : ${loavesCount} pains vendables + ${buffer} tampon casse (Total : ${physicalCapacity}).`,
+          `Inventaire physique stock fournil vérifié : ${count} pains restants pour la boutique du matin.`,
           'info'
         )
       ]
     }));
   };
 
-  const handleDeleteCart = (id: string) => {
+  const handleToggleProtocolChecklist = (key: keyof ShiftState['protocolChecklist']) => {
     setState((prev) => ({
       ...prev,
-      carts: prev.carts.filter((c) => c.id !== id),
-      auditLogs: [
-        ...prev.auditLogs,
-        createAuditLog(ShiftPhase.PHASE_1_BAKING, 'production', `Suppression chariot id ${id}`, 'warning')
-      ]
-    }));
-  };
-
-  // ==========================================
-  // HANDLERS CARTONNAGE MINUIT
-  // ==========================================
-  const handleAddCartonDump = (cartonCount: number, notes?: string) => {
-    const newDump: CartonDumpEntry = {
-      id: 'cdump_' + Date.now(),
-      timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      cartSequenceNumber: state.cartonDumps.length + 1,
-      cartonCount,
-      estimatedLoaves: cartonCount * 50,
-      notes
-    };
-
-    setState((prev) => ({
-      ...prev,
-      cartonDumps: [...prev.cartonDumps, newDump],
-      auditLogs: [
-        ...prev.auditLogs,
-        createAuditLog(
-          ShiftPhase.PHASE_2_CARTONING,
-          'cartonnage',
-          `Chariot #${newDump.cartSequenceNumber} versé dans les cartons (${cartonCount} cartons).`,
-          'info'
-        )
-      ]
-    }));
-  };
-
-  const handleDeleteCartonDump = (id: string) => {
-    setState((prev) => ({
-      ...prev,
-      cartonDumps: prev.cartonDumps.filter((c) => c.id !== id),
-      auditLogs: [
-        ...prev.auditLogs,
-        createAuditLog(ShiftPhase.PHASE_2_CARTONING, 'cartonnage', `Suppression dépotage id ${id}`, 'warning')
-      ]
-    }));
-  };
-
-  const handleUpdateChecklist = (key: keyof ShiftState['onboardingChecklist'], val: boolean) => {
-    setState((prev) => ({
-      ...prev,
-      onboardingChecklist: { ...prev.onboardingChecklist, [key]: val }
+      protocolChecklist: {
+        ...prev.protocolChecklist,
+        [key]: !prev.protocolChecklist?.[key]
+      }
     }));
   };
 
@@ -305,140 +265,183 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
 
   const scrollToSection = (tab: typeof activeTab) => {
     setActiveTab(tab);
-    window.scrollTo({ top: 400, behavior: 'smooth' });
+    window.scrollTo({ top: 380, behavior: 'smooth' });
   };
+
+  const zeroMissingStatus = recon.zeroMissingBalance === 0
+    ? 'perfect'
+    : recon.zeroMissingBalance > 0
+    ? 'missing'
+    : 'surplus';
 
   return (
     <div className="app-container">
-      {/* Barre d'en-tête */}
+      {/* Barre d'en-tête responsive */}
       <HeaderBar
         state={state}
         onOpenReport={() => setIsReportOpen(true)}
         onOpenAgent={() => setIsAgentOpen(true)}
         onLoadDemo={handleLoadDemo}
         onResetShift={handleResetShift}
+        onOpenProtocol={() => setIsProtocolModalOpen(true)}
         unreadAlertsCount={recon.totalAnomaliesDetected}
+        isHeroVisible={isHeroVisible}
+        onToggleHero={() => setIsHeroVisible(!isHeroVisible)}
       />
 
-      {/* Hero 3D Interactif (Scroll-Craft Standard) */}
+      {/* Hero 3D Interactif (Compact ou Étendu) */}
       <ThreeDimensionalBreadHero
         state={state}
         onScrollToDispatch={() => scrollToSection('dispatch')}
         onScrollToBaking={() => scrollToSection('pates')}
+        isCollapsed={!isHeroVisible}
+        onToggleCollapse={() => setIsHeroVisible(!isHeroVisible)}
       />
 
-      {/* Barre de navigation ultra-fluide / Les 2 Seules Missions du Patron */}
+      {/* Barre de navigation simplifiée : 3 Piliers Infaillibles */}
       <div className="scroll-rail-nav" style={{ padding: '10px 14px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', alignItems: 'center' }}>
           
-          {/* Mission 1 : Pâtes par Sac de Farine */}
+          {/* Ligne Directive */}
+          <button
+            onClick={() => setIsProtocolModalOpen(true)}
+            className="btn"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.25) 100%)',
+              color: 'var(--amber-light)',
+              border: '1px solid rgba(245, 158, 11, 0.5)',
+              padding: '10px 16px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap'
+            }}
+            title="Consulter la ligne directive et les règles d'or"
+          >
+            <ShieldCheck size={16} />
+            <span>🛡️ Ligne Directive</span>
+          </button>
+
+          {/* Pilier 1 : Pâtes par Sac de Farine */}
           <button
             onClick={() => setActiveTab('pates')}
             className="btn"
             style={{
               background: activeTab === 'pates' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'rgba(255,255,255,0.05)',
               color: activeTab === 'pates' ? '#000' : 'var(--flour-white)',
-              padding: '11px 20px',
+              padding: '10px 18px',
               borderRadius: '12px',
-              fontSize: '14px',
+              fontSize: '13.5px',
               fontWeight: 800,
               whiteSpace: 'nowrap',
               border: activeTab === 'pates' ? 'none' : '1px solid rgba(255,255,255,0.1)',
               boxShadow: activeTab === 'pates' ? '0 4px 15px rgba(245,158,11,0.4)' : 'none'
             }}
           >
-            <ShoppingBag size={18} />
-            <span>🥖 1. Pâtes par Sac de Farine</span>
+            <ShoppingBag size={17} />
+            <span>🥖 1. Pâtes & Fournil</span>
             {(state.flourBags?.length || 0) > 0 && (
               <span style={{
                 background: activeTab === 'pates' ? 'rgba(0,0,0,0.25)' : 'rgba(245,158,11,0.25)',
                 color: activeTab === 'pates' ? '#000' : 'var(--amber-light)',
                 borderRadius: '999px',
-                padding: '2px 9px',
-                fontSize: '11.5px',
+                padding: '2px 8px',
+                fontSize: '11px',
                 fontWeight: 800
               }}>
-                {state.flourBags?.length} sac{state.flourBags.length > 1 ? 's' : ''}
+                {state.flourBags.length} sac{state.flourBags.length > 1 ? 's' : ''} ({recon.totalPatesCount} p.)
               </span>
             )}
           </button>
 
-          {/* Mission 2 : Énumérer les Livreurs */}
+          {/* Pilier 2 : Sorties Livreurs */}
           <button
             onClick={() => setActiveTab('dispatch')}
             className="btn"
             style={{
               background: activeTab === 'dispatch' ? 'linear-gradient(135deg, var(--amber-primary) 0%, var(--gold-glow) 100%)' : 'rgba(255,255,255,0.05)',
               color: activeTab === 'dispatch' ? '#000' : 'var(--flour-white)',
-              padding: '11px 20px',
+              padding: '10px 18px',
               borderRadius: '12px',
-              fontSize: '14px',
+              fontSize: '13.5px',
               fontWeight: 800,
               whiteSpace: 'nowrap',
               border: activeTab === 'dispatch' ? 'none' : '1px solid rgba(255,255,255,0.1)',
               boxShadow: activeTab === 'dispatch' ? '0 4px 15px rgba(245,158,11,0.4)' : 'none'
             }}
           >
-            <Truck size={18} />
-            <span>🚚 2. Énumérer les Livreurs</span>
+            <Truck size={17} />
+            <span>🚚 2. Sorties Livreurs (Sas)</span>
             {(state.deliveries?.length || 0) > 0 && (
               <span style={{
                 background: activeTab === 'dispatch' ? 'rgba(0,0,0,0.25)' : 'rgba(245,158,11,0.25)',
                 color: activeTab === 'dispatch' ? '#000' : 'var(--amber-light)',
                 borderRadius: '999px',
-                padding: '2px 9px',
-                fontSize: '11.5px',
+                padding: '2px 8px',
+                fontSize: '11px',
                 fontWeight: 800
               }}>
-                {state.deliveries?.length} livreur{state.deliveries.length > 1 ? 's' : ''}
+                {state.deliveries.length} sortie{state.deliveries.length > 1 ? 's' : ''}
               </span>
             )}
           </button>
 
-          {/* Fiche Simple Patron */}
+          {/* Pilier 3 : Contrôle Infaillible Zéro Manquant */}
           <button
-            onClick={() => setIsReportOpen(true)}
+            onClick={() => setActiveTab('reconciliation')}
             className="btn"
             style={{
-              background: 'rgba(16, 185, 129, 0.18)',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.45)',
-              padding: '11px 18px',
+              background: activeTab === 'reconciliation'
+                ? 'linear-gradient(135deg, #10b981 0%, #047857 100%)'
+                : recon.zeroMissingBalance > 0
+                ? 'rgba(239, 68, 68, 0.2)'
+                : 'rgba(255,255,255,0.05)',
+              color: activeTab === 'reconciliation' ? '#fff' : recon.zeroMissingBalance > 0 ? '#fca5a5' : 'var(--flour-white)',
+              padding: '10px 18px',
               borderRadius: '12px',
               fontSize: '13.5px',
               fontWeight: 800,
-              marginLeft: 'auto',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              border: activeTab === 'reconciliation' ? 'none' : recon.zeroMissingBalance > 0 ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: activeTab === 'reconciliation' ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none'
             }}
-            title="Afficher la fiche claire à remettre au patron"
           >
-            <FileCheck size={18} />
-            <span>📋 Fiche Finale Patron</span>
+            <ShieldCheck size={17} />
+            <span>⚖️ 3. Zéro Manquant & Bilan</span>
+            <span style={{
+              background: activeTab === 'reconciliation' ? 'rgba(0,0,0,0.25)' : recon.zeroMissingBalance === 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.3)',
+              color: activeTab === 'reconciliation' ? '#fff' : recon.zeroMissingBalance === 0 ? '#34d399' : '#f87171',
+              borderRadius: '999px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: 800
+            }}>
+              {recon.zeroMissingBalance === 0 ? '✓ 0 Manquant' : `🚨 ${recon.zeroMissingBalance} Manquant`}
+            </span>
           </button>
 
-          {/* Bouton pour afficher la vue avancée optionnelle (Chariots / Cartons) */}
+          {/* Fiche Patron Modal */}
           <button
-            onClick={() => setActiveTab(activeTab === 'advanced_baking' ? 'pates' : 'advanced_baking')}
-            className="btn"
+            onClick={() => setIsReportOpen(true)}
+            className="btn btn-secondary"
             style={{
-              background: (activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
-              color: (activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? '#c4b5fd' : 'var(--text-muted)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              padding: '9px 12px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap'
+              fontSize: '13px',
+              padding: '10px 16px',
+              marginLeft: 'auto',
+              whiteSpace: 'nowrap',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.45)'
             }}
-            title="Options avancées facultatives (Chariots métalliques & Cartons minuit)"
+            title="Consulter le bordereau officiel pour le patron"
           >
-            <Settings size={14} />
-            <span>{(activeTab === 'advanced_baking' || activeTab === 'advanced_cartoning') ? 'Masquer Avancé' : 'Chariots & Cartons (Optionnel)'}</span>
+            <FileCheck size={16} />
+            <span>📋 Bordereau Patron</span>
           </button>
 
         </div>
       </div>
 
-      {/* Vue active ultra-centrée sur les 2 missions */}
+      {/* Vues Actives : 3 Piliers Infaillibles */}
       <main className="perspective-stage">
         {activeTab === 'pates' && (
           <div ref={bakingSectionRef}>
@@ -447,6 +450,7 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
               onAddFlourBag={handleAddFlourBag}
               onDeleteFlourBag={handleDeleteFlourBag}
               onNavigateToDrivers={() => setActiveTab('dispatch')}
+              onOpenProtocolModal={() => setIsProtocolModalOpen(true)}
             />
           </div>
         )}
@@ -458,63 +462,19 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
               onAddDelivery={handleAddDelivery}
               onUpdateDelivery={handleUpdateDelivery}
               onDeleteDelivery={handleDeleteDelivery}
+              onOpenProtocolModal={() => setIsProtocolModalOpen(true)}
             />
           </div>
         )}
 
-        {activeTab === 'advanced_baking' && (
+        {activeTab === 'reconciliation' && (
           <div>
-            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setActiveTab('pates')}
-                style={{ fontSize: '12px' }}
-              >
-                ← Retour au comptage simple des pâtes
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setActiveTab('advanced_cartoning')}
-                style={{ fontSize: '12px' }}
-              >
-                Aller au Cartonnage Minuit →
-              </button>
-            </div>
-            <PhaseBaking
+            <ZeroManquantControlView
               state={state}
-              onUpdateTargetFlourBags={handleUpdateTargetFlourBags}
-              onAddFlourBag={handleAddFlourBag}
-              onDeleteFlourBag={handleDeleteFlourBag}
-              onAddCart={handleAddCart}
-              onDeleteCart={handleDeleteCart}
-              onAdvanceToPhase2={() => setActiveTab('advanced_cartoning')}
-            />
-          </div>
-        )}
-
-        {activeTab === 'advanced_cartoning' && (
-          <div>
-            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setActiveTab('advanced_baking')}
-                style={{ fontSize: '12px' }}
-              >
-                ← Retour Fournil & Chariots
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => setActiveTab('dispatch')}
-                style={{ fontSize: '12px' }}
-              >
-                Aller à l'Énumération des Livreurs →
-              </button>
-            </div>
-            <PhaseCartoning
-              state={state}
-              onAddCartonDump={handleAddCartonDump}
-              onDeleteCartonDump={handleDeleteCartonDump}
-              onAdvanceToPhase3={() => setActiveTab('dispatch')}
+              onUpdatePhysicalStock={handleUpdatePhysicalStock}
+              onOpenReportModal={() => setIsReportOpen(true)}
+              onNavigateToPates={() => setActiveTab('pates')}
+              onNavigateToDispatch={() => setActiveTab('dispatch')}
             />
           </div>
         )}
@@ -523,7 +483,21 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
       {/* Journal d'Audit Immuable */}
       <AuditLogViewer logs={state.auditLogs} />
 
-      {/* Modals & Tiroir Copilote */}
+      {/* Barre de navigation mobile inférieure tactile */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onChangeTab={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenAgent={() => setIsAgentOpen(true)}
+        unreadAlertsCount={recon.totalAnomaliesDetected}
+        activeSasCount={state.deliveries?.filter((d) => d.status === 'en_cours').length || 0}
+        totalBagsCount={state.flourBags?.length || 0}
+        zeroMissingStatus={zeroMissingStatus}
+      />
+
+      {/* Modals & Copilote IA */}
       <HandoverReportModal
         isOpen={isReportOpen}
         onClose={() => setIsReportOpen(false)}
@@ -535,6 +509,13 @@ Grâce à votre contrôle physique, **${delivery.bagsCount * 2} pains** supplém
         onClose={() => setIsAgentOpen(false)}
         state={state}
         onSendMessage={handleAgentSendMessage}
+      />
+
+      <ProtocolZeroManquantModal
+        isOpen={isProtocolModalOpen}
+        onClose={() => setIsProtocolModalOpen(false)}
+        state={state}
+        onToggleChecklist={handleToggleProtocolChecklist}
       />
     </div>
   );

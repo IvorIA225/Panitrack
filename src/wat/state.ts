@@ -1,9 +1,10 @@
 /**
  * PaniTrack - GESTIONNAIRE D'ÉTAT & PERSISTANCE SÉCURISÉE
  * Sauvegarde automatique dans le LocalStorage avec journalisation d'audit.
+ * Intégration du système et protocole « Zéro Manquant ».
  */
 
-import { ShiftState, ShiftPhase, AuditLogEntry } from './types';
+import { ShiftState, ShiftPhase, AuditLogEntry, OFFICIAL_UNIT_PRICES } from './types';
 import { createAuditLog } from './tools';
 
 const STORAGE_KEY = 'panitrack_shift_state_v1';
@@ -21,11 +22,26 @@ export const INITIAL_SHIFT_STATE: ShiftState = {
   dialloInspections: [],
   souridjiMembers: [],
   genericDeliveries: [],
+  quarantineStockBags: 0,
+  activeDockDeliveryId: null,
+  unitPrices: {
+    guichet_comptoir: OFFICIAL_UNIT_PRICES.guichet_comptoir,
+    livreur_officiel: OFFICIAL_UNIT_PRICES.livreur_officiel,
+    adjara_grossiste: OFFICIAL_UNIT_PRICES.adjara_grossiste
+  },
+  protocolChecklist: {
+    quarantineEnforced: true,
+    antiSecheDisplayed: true,
+    oneByOneSanctified: true,
+    bagsSealed25: true,
+    channelsSeparated: true,
+    photoProofRequired: true
+  },
   auditLogs: [
     createAuditLog(
       ShiftPhase.PHASE_0_ONBOARDING,
       'workflow',
-      'Initialisation du shift PaniTrack. Mode sécurisé activé.',
+      'Initialisation du shift PaniTrack. Protocole Zéro Manquant activé.',
       'info'
     )
   ],
@@ -36,12 +52,11 @@ export const INITIAL_SHIFT_STATE: ShiftState = {
       sender: 'agent',
       category: 'conseil',
       content: `👋 **Bienvenue sur PaniTrack !** Je suis ton Copilote IA pour ce shift de nuit en boulangerie.
-Je vais t'accompagner étape par étape selon les consignes exactes de la note vocale :
-1. Posture diplomatique avec les ouvriers
-2. Suivi de la farine & des 400 pains par sac
-3. Cartonnage de minuit
-4. Contrôle critique des livreurs à 03h30 (Diallo & équipe Souridji)
-5. Bilan réconcilié pour l'arrivée du patron.`
+Pour garantir le **ZÉRO MANQUANT**, nous appliquons mécaniquement les 4 piliers :
+1. **Terrain :** Zone de quarantaine, anti-sèche 1s=25p et sas « un par un ».
+2. **Production :** 400 pâtons par sac, démarque des brûlés/cassés comptabilisée.
+3. **Distribution :** Sacs scellés à 25, canaux scindés (Livreurs 110 F, ADJARA 110 F, Guichet 150 F).
+4. **Automatisation :** Preuve photo horodatée, saisie simplifiée et calcul financier FCFA instantané.`
     }
   ],
   onboardingChecklist: {
@@ -68,6 +83,16 @@ export function loadShiftState(): ShiftState {
         dialloInspections: Array.isArray(parsed.dialloInspections) ? parsed.dialloInspections : [],
         souridjiMembers: Array.isArray(parsed.souridjiMembers) ? parsed.souridjiMembers : [],
         genericDeliveries: Array.isArray(parsed.genericDeliveries) ? parsed.genericDeliveries : [],
+        countedPhysicalStockRemaining: typeof parsed.countedPhysicalStockRemaining === 'number' ? parsed.countedPhysicalStockRemaining : undefined,
+        unitPrices: {
+          guichet_comptoir: parsed.unitPrices?.guichet_comptoir ?? OFFICIAL_UNIT_PRICES.guichet_comptoir,
+          livreur_officiel: parsed.unitPrices?.livreur_officiel ?? OFFICIAL_UNIT_PRICES.livreur_officiel,
+          adjara_grossiste: parsed.unitPrices?.adjara_grossiste ?? OFFICIAL_UNIT_PRICES.adjara_grossiste
+        },
+        protocolChecklist: {
+          ...INITIAL_SHIFT_STATE.protocolChecklist,
+          ...(parsed.protocolChecklist || {})
+        },
         auditLogs: Array.isArray(parsed.auditLogs) && parsed.auditLogs.length > 0 ? parsed.auditLogs : INITIAL_SHIFT_STATE.auditLogs,
         agentMessages: Array.isArray(parsed.agentMessages) && parsed.agentMessages.length > 0 ? parsed.agentMessages : INITIAL_SHIFT_STATE.agentMessages,
         onboardingChecklist: {
@@ -96,26 +121,67 @@ export function resetShiftState(): ShiftState {
 }
 
 /**
- * Charge le scénario typique complet de la note vocale pour démonstration instantanée
+ * Charge le scénario typique complet de la note vocale avec les 4 piliers Zéro Manquant
  */
 export function loadVoiceNoteDemoScenario(): ShiftState {
   const demoLogs: AuditLogEntry[] = [
-    createAuditLog(ShiftPhase.PHASE_0_ONBOARDING, 'workflow', 'Prise de poste avec courtoisie auprès des boulangers de nuit.', 'success'),
-    createAuditLog(ShiftPhase.PHASE_1_BAKING, 'production', '2 sacs de farine travaillés. 800 pains sortis (400 par sac).', 'info'),
-    createAuditLog(ShiftPhase.PHASE_2_CARTONING, 'cartonnage', 'Minuit : 4 chariots vidés et versés dans les cartons.', 'info'),
+    createAuditLog(ShiftPhase.PHASE_0_ONBOARDING, 'workflow', 'Prise de poste avec courtoisie. Protocole Zéro Manquant initialisé.', 'success'),
+    createAuditLog(ShiftPhase.PHASE_1_BAKING, 'production', '2 sacs de farine travaillés. 40 pâtes (20/sac) = 800 pâtons bruts, 8 brûlés, 4 cassés = 788 vendables nets.', 'info'),
+    createAuditLog(ShiftPhase.PHASE_2_CARTONING, 'cartonnage', 'Minuit : chariots vidés et emballés pour la tournée.', 'info'),
     createAuditLog(ShiftPhase.PHASE_3_DISPATCH, 'securite', 'ALERTE DIALLO : Contrôle physique d’un sac = 27 pains au lieu de 25 (+2 pains par sac). Prise de 30 sacs = 810 pains réels au lieu de 750 théoriques.', 'danger'),
-    createAuditLog(ShiftPhase.PHASE_3_DISPATCH, 'livraison', 'Équipe Souridji : 3 livreurs individuels enregistrés nominativement (Moussa, Ibrahim, Ousmane).', 'success')
+    createAuditLog(ShiftPhase.PHASE_3_DISPATCH, 'livraison', 'Distribution scindée : Livreurs officiels (110 F), Section ADJARA (110 F) et Guichet (150 F).', 'success')
   ];
 
   return {
-    shiftId: 'DEMO-VOCAL-NOTE',
+    shiftId: 'DEMO-ZERO-MANQUANT',
     operatorName: 'Apprenti Contrôleur',
     startedAt: '21:00',
     currentPhase: ShiftPhase.PHASE_3_DISPATCH,
     targetFlourBags: 9,
+    quarantineStockBags: 12,
+    activeDockDeliveryId: null,
+    unitPrices: {
+      guichet_comptoir: 150,
+      livreur_officiel: 110,
+      adjara_grossiste: 110
+    },
+    protocolChecklist: {
+      quarantineEnforced: true,
+      antiSecheDisplayed: true,
+      oneByOneSanctified: true,
+      bagsSealed25: true,
+      channelsSeparated: true,
+      photoProofRequired: true
+    },
     flourBags: [
-      { id: 'fb_1', timestamp: '22:15', bagIndex: 1, expectedLoaves: 400, actualLoaves: 400, notes: 'Première fournée normale' },
-      { id: 'fb_2', timestamp: '23:30', bagIndex: 2, expectedLoaves: 400, actualLoaves: 400, notes: 'Deuxième pétrin parfait' }
+      {
+        id: 'fb_1',
+        timestamp: '22:15',
+        bagIndex: 1,
+        patesCount: 20,
+        loavesPerPate: 20,
+        expectedLoaves: 400,
+        actualLoaves: 400,
+        burnedLoaves: 5,
+        brokenLoaves: 2,
+        netVendableLoaves: 393,
+        deltaQuotaLoaves: 0,
+        notes: 'Sac #1 : 20 pâtes conformes (400 baguettes). 7 démarques (5 brûlés, 2 cassés)'
+      },
+      {
+        id: 'fb_2',
+        timestamp: '23:30',
+        bagIndex: 2,
+        patesCount: 20,
+        loavesPerPate: 20,
+        expectedLoaves: 400,
+        actualLoaves: 400,
+        burnedLoaves: 3,
+        brokenLoaves: 2,
+        netVendableLoaves: 395,
+        deltaQuotaLoaves: 0,
+        notes: 'Sac #2 : 20 pâtes conformes (400 baguettes). 5 démarques (3 brûlés, 2 cassés)'
+      }
     ],
     carts: [
       { id: 'c_1', timestamp: '22:45', cartNumber: 1, loavesCount: 180, physicalCapacity: 200, lossCompensationBuffer: 20, status: 'verse_carton' },
@@ -133,58 +199,75 @@ export function loadVoiceNoteDemoScenario(): ShiftState {
       {
         id: 'del_diallo_1',
         timestamp: '03:40',
+        closedAt: '03:48',
         driverName: 'Diallo (Tournée Principale)',
+        channel: 'livreur_officiel',
         driverCategory: 'diallo',
+        status: 'cloture',
+        loadingBayStatus: 'completed',
         bagsCount: 30,
+        sealedBagsCount: 30,
         loavesPerBag: 27, // Piège audio
         looseLoavesCount: 0,
         totalLoaves: 810,
+        unitPriceCFA: 110,
+        totalPriceCFA: 89100, // 810 x 110 F
         notes: '⚠️ Sac vérifié à 27 pains (+2/sac). 60 pains supplémentaires détectés !',
         isAnomaly: true
       },
       {
         id: 'del_moussa_1',
         timestamp: '03:50',
+        closedAt: '03:55',
         driverName: 'Moussa (Groupe Souridji)',
+        channel: 'livreur_officiel',
         driverCategory: 'souridji',
+        status: 'cloture',
+        loadingBayStatus: 'completed',
         bagsCount: 10,
+        sealedBagsCount: 10,
         loavesPerBag: 25,
         looseLoavesCount: 0,
         totalLoaves: 250,
-        notes: '10 sacs complets'
+        unitPriceCFA: 110,
+        totalPriceCFA: 27500, // 250 x 110 F
+        notes: '10 sacs scellés à 25'
       },
       {
-        id: 'del_ibrahim_1',
-        timestamp: '04:10',
-        driverName: 'Ibrahim (Groupe Souridji)',
-        driverCategory: 'souridji',
-        bagsCount: 8,
+        id: 'del_adjara_1',
+        timestamp: '04:15',
+        closedAt: '04:22',
+        driverName: 'Grossiste ADJARA (Dépôt Central)',
+        channel: 'adjara_grossiste',
+        driverCategory: 'adjara',
+        status: 'cloture',
+        loadingBayStatus: 'completed',
+        bagsCount: 12,
+        sealedBagsCount: 12,
         loavesPerBag: 25,
         looseLoavesCount: 0,
-        totalLoaves: 200,
-        notes: '8 sacs complets'
+        totalLoaves: 300,
+        unitPriceCFA: 110,
+        totalPriceCFA: 33000, // 300 x 110 F
+        notes: '12 sacs scellés section ADJARA'
       },
       {
-        id: 'del_ousmane_1',
-        timestamp: '04:25',
-        driverName: 'Ousmane (Groupe Souridji)',
-        driverCategory: 'souridji',
-        bagsCount: 5,
+        id: 'del_guichet_1',
+        timestamp: '04:30',
+        closedAt: '04:35',
+        driverName: 'Vente Guichet (Comptoir Matin)',
+        channel: 'guichet_comptoir',
+        driverCategory: 'guichet',
+        status: 'cloture',
+        loadingBayStatus: 'completed',
+        bagsCount: 2,
+        sealedBagsCount: 2,
         loavesPerBag: 25,
-        looseLoavesCount: 14, // 5 sacs + 14 pains en vrac hors quota !
-        totalLoaves: 139,
-        notes: '5 sacs de 25 + 14 pains au détail hors sac'
-      },
-      {
-        id: 'del_amadou_1',
-        timestamp: '04:40',
-        driverName: 'Amadou (Livreur Vélo)',
-        driverCategory: 'autre',
-        bagsCount: 0, // Moins d'un sac complet !
-        loavesPerBag: 25,
-        looseLoavesCount: 18, // 18 pains en vrac
-        totalLoaves: 18,
-        notes: '18 pains au détail (pas de sac complet)'
+        looseLoavesCount: 20,
+        totalLoaves: 70, // 50 + 20
+        unitPriceCFA: 150,
+        totalPriceCFA: 10500, // 70 x 150 F
+        notes: 'Comptant guichet : 2 sacs + 20 vrac'
       }
     ],
     dialloInspections: [
@@ -193,35 +276,19 @@ export function loadVoiceNoteDemoScenario(): ShiftState {
         timestamp: '03:40',
         totalBagsTaken: 30,
         theoreticalLoavesPerBag: 25,
-        sampledBagLoavesCount: 27, // LE PIÈGE RELEVÉ DANS L'AUDIO !
+        sampledBagLoavesCount: 27,
         isAnomalyDetected: true,
         leakagePerBag: 2,
         totalFinancialLeakageLoaves: 60,
-        totalBreadsCalculated: 810, // 30 x 27
+        totalBreadsCalculated: 810,
         notes: 'ATTENTION : Sur-remplissage constaté (+2 pains par sac). 60 pains supplémentaires détectés grâce au comptage physique !',
         verified: true
       }
     ],
     souridjiMembers: [
-      { id: 'sm_1', timestamp: '03:50', individualName: 'Moussa (Groupe Souridji)', bagsCount: 10, loavesCount: 250, notes: 'Vérifié' },
-      { id: 'sm_2', timestamp: '04:10', individualName: 'Ibrahim (Groupe Souridji)', bagsCount: 8, loavesCount: 200, notes: 'Vérifié' },
-      { id: 'sm_3', timestamp: '04:25', individualName: 'Ousmane (Groupe Souridji)', bagsCount: 6, loavesCount: 150, notes: 'Vérifié' }
+      { id: 'sm_1', timestamp: '03:50', individualName: 'Moussa (Groupe Souridji)', bagsCount: 10, loavesCount: 250, notes: 'Vérifié' }
     ],
-    genericDeliveries: [
-      {
-        id: 'gd_1',
-        timestamp: '04:00',
-        driverName: 'Amadou (Livreur Centre-Ville)',
-        driverCategory: 'autre',
-        driverType: 'autre',
-        bagsCount: 4,
-        loavesPerBag: 25,
-        looseLoavesCount: 0,
-        totalLoaves: 100,
-        totalCalculatedLoaves: 100,
-        notes: 'Conforme'
-      }
-    ],
+    genericDeliveries: [],
     auditLogs: demoLogs,
     agentMessages: [
       {
@@ -231,8 +298,8 @@ export function loadVoiceNoteDemoScenario(): ShiftState {
         category: 'alerte',
         content: `🚨 **ALERTE ANOMALIE DIALLO DÉTECTÉE !**
 Vous avez ouvert un sac de Diallo et compté **27 pains** au lieu des 25 prévus.
-Comme Diallo charge **30 sacs**, si vous n’aviez pas recompté comme le demandait la note vocale, **60 pains** auraient quitté la boulangerie sans traçabilité !
-Le système a enregistré le total exact de **810 pains**.`
+Comme Diallo charge **30 sacs**, si vous n’aviez pas recompté comme le demandait la règle des 25, **60 pains** auraient quitté la boulangerie sans traçabilité !
+Total exact tracé et facturé : **810 pains = 89 100 FCFA** (à 110 F/pain).`
       }
     ],
     onboardingChecklist: {
